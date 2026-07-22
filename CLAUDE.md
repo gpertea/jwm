@@ -20,6 +20,15 @@ Wanted (this is what tint2 currently provides and JWM cannot):
    <Tray screen="2" valign="bottom" ...> instead of hand-computed
    root-coordinate x/y pixel math. Screen reference by index; by
    RandR output name (DP-2) is nicer if cheap.
+   The edge choice is PER SCREEN (top or bottom, full screen width),
+   and placement must be computed from that screen's actual geometry
+   (position, size, rotation-adjusted dimensions) - never assume a
+   uniform row of monitors. Motivating case: in the owner's home
+   layout a 4th monitor sits ON TOP of the 1st, and the natural spot
+   for that screen's bar is its TOP edge, so tall windows spanning
+   the two stacked monitors keep visual continuity. The same
+   screen-relative jwmrc semantics should produce sensible bars in
+   both the work (row + vertical) and home (stacked) layouts.
 5. Decent taskbar icon handling (tint2 does this better today; some
    legacy apps need fallbacks/overrides).
 
