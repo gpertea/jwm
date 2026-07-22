@@ -1014,6 +1014,52 @@ void FocusAt(char n)
    }
 }
 
+/** Move a client's task entry to the end of the task list.
+ * Called when a client moves to another screen so that its button is
+ * appended after the existing buttons on the new screen's task bar.
+ * Only reorders when some task bar filters by screen; otherwise the
+ * global creation order is kept (the upstream behavior). */
+void MoveClientToTaskBarEnd(ClientNode *np)
+{
+   const TaskBarType *bp;
+   TaskEntry *tp;
+   char filtered;
+
+   filtered = 0;
+   for(bp = bars; bp; bp = bp->next) {
+      if(bp->screenFilter != SCREEN_FILTER_ALL) {
+         filtered = 1;
+         break;
+      }
+   }
+   if(!filtered) {
+      return;
+   }
+
+   for(tp = taskEntries; tp; tp = tp->next) {
+      const ClientEntry *cp;
+      for(cp = tp->clients; cp; cp = cp->next) {
+         if(cp->client == np) {
+            if(tp == taskEntriesTail) {
+               return;
+            }
+            if(tp->prev) {
+               tp->prev->next = tp->next;
+            } else {
+               taskEntries = tp->next;
+            }
+            tp->next->prev = tp->prev;
+            tp->prev = taskEntriesTail;
+            tp->next = NULL;
+            taskEntriesTail->next = tp;
+            taskEntriesTail = tp;
+            RequireTaskUpdate();
+            return;
+         }
+      }
+   }
+}
+
 /** Get the screen index a task bar is filtered to. */
 int GetBarScreen(const TaskBarType *bp)
 {

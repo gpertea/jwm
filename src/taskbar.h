@@ -47,6 +47,13 @@ void FocusNext(void);
 /** Focus the previous client in the task bar. */
 void FocusPrevious(void);
 
+/** Move a client's task entry to the end of the task list.
+ * Used when a client changes screens so its button is appended on the
+ * new screen's task bar. No-op unless some task bar filters by screen.
+ * @param np The client.
+ */
+void MoveClientToTaskBarEnd(struct ClientNode *np);
+
 /** Set the screen filter of a task bar.
  * @param cp The task bar component.
  * @param value "all" (default), "local" (the parent tray's screen),
