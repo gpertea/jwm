@@ -47,6 +47,13 @@ void FocusNext(void);
 /** Focus the previous client in the task bar. */
 void FocusPrevious(void);
 
+/** Set the screen filter of a task bar.
+ * @param cp The task bar component.
+ * @param value "all" (default), "local" (the parent tray's screen),
+ * or a screen index.
+ */
+void SetTaskBarScreenFilter(struct TrayComponentType *cp, const char *value);
+
 /** Set the maximum width of task bar items.
  * @param cp The task bar component.
  * @param value The maximum width.

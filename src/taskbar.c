@@ -27,6 +27,10 @@
 #include "misc.h"
 #include "desktop.h"
 
+/** Values for the TaskBarType screenFilter field. */
+#define SCREEN_FILTER_ALL     (-1)  /**< Show clients from all screens. */
+#define SCREEN_FILTER_LOCAL   (-2)  /**< Show the parent tray's screen. */
+
 typedef struct TaskBarType {
 
    TrayComponentType *cp;
@@ -34,6 +38,7 @@ typedef struct TaskBarType {
 
    int maxItemWidth;
    int userHeight;
+   int screenFilter;
    int itemHeight;
    int itemWidth;
    LayoutType layout;
@@ -63,9 +68,11 @@ static TaskBarType *bars;
 static TaskEntry *taskEntries;
 static TaskEntry *taskEntriesTail;
 
-static unsigned TallyVisibleItems(void);
+static unsigned TallyVisibleItems(const TaskBarType *bp);
 static void ComputeItemSize(TaskBarType *tp);
-static char ShouldShowEntry(const TaskEntry *tp);
+static int GetBarScreen(const TaskBarType *bp);
+static char ShouldShowClient(const TaskBarType *bp, const ClientNode *np);
+static char ShouldShowEntry(const TaskBarType *bp, const TaskEntry *tp);
 static char ShouldFocusEntry(const TaskEntry *tp);
 static TaskEntry *GetEntry(TaskBarType *bar, int x, int y);
 static void Render(const TaskBarType *bp);
@@ -128,6 +135,7 @@ TrayComponentType *CreateTaskBar()
    tp->itemWidth = 0;
    tp->userHeight = 0;
    tp->maxItemWidth = 0;
+   tp->screenFilter = SCREEN_FILTER_ALL;
    tp->layout = LAYOUT_HORIZONTAL;
    tp->labeled = 1;
    tp->labelPos = LABEL_POSITION_RIGHT;
@@ -191,12 +199,12 @@ void Resize(TrayComponentType *cp)
 }
 
 /** Count the number of items that should be shown in the task bar. */
-unsigned TallyVisibleItems(void)
+unsigned TallyVisibleItems(const TaskBarType *bp)
 {
    TaskEntry *ep;
    unsigned count = 0;
    for(ep = taskEntries; ep; ep = ep->next) {
-      if(ShouldShowEntry(ep)) {
+      if(ShouldShowEntry(bp, ep)) {
          count += 1;
       }
    }
@@ -210,7 +218,7 @@ void ComputeItemSize(TaskBarType *tp)
 
    if(tp->layout == LAYOUT_VERTICAL) {
       if(tp->labelPos > LABEL_POSITION_RIGHT) {
-         unsigned itemCount = TallyVisibleItems();
+         unsigned itemCount = TallyVisibleItems(tp);
          if(itemCount == 0) {
             return;
          }
@@ -232,7 +240,7 @@ void ComputeItemSize(TaskBarType *tp)
          tp->itemWidth = cp->width;
       }
    } else {
-      unsigned itemCount = TallyVisibleItems();
+      unsigned itemCount = TallyVisibleItems(tp);
       if(itemCount == 0) {
          return;
       }
@@ -752,7 +760,7 @@ void UpdateTaskBar(void)
          }
          bp->cp->requestedHeight = 0;
          for(tp = taskEntries; tp; tp = tp->next) {
-            if(ShouldShowEntry(tp)) {
+            if(ShouldShowEntry(bp, tp)) {
                bp->cp->requestedHeight += bp->itemHeight;
             }
          }
@@ -822,7 +830,7 @@ void Render(const TaskBarType *bp)
    y = 0;
    for(tp = taskEntries; tp; tp = tp->next) {
 
-      if(!ShouldShowEntry(tp)) {
+      if(!ShouldShowEntry(bp, tp)) {
          continue;
       }
 
@@ -831,7 +839,7 @@ void Render(const TaskBarType *bp)
       unsigned clientCount = 0;
       button.type = BUTTON_TASK;
       for(cp = tp->clients; cp; cp = cp->next) {
-         if(ShouldFocus(cp->client, 0)) {
+         if(ShouldShowClient(bp, cp->client)) {
             const char flash = (cp->client->state.status & STAT_FLASH) != 0;
             const char active = (cp->client->state.status & STAT_ACTIVE)
                && IsClientOnCurrentDesktop(cp->client);
@@ -990,12 +998,34 @@ void FocusAt(char n)
    }
 }
 
+/** Get the screen index a task bar is filtered to. */
+int GetBarScreen(const TaskBarType *bp)
+{
+   if(bp->screenFilter == SCREEN_FILTER_LOCAL) {
+      return bp->cp->tray->screen;
+   }
+   return bp->screenFilter;
+}
+
+/** Determine if a client should be shown on the specified task bar. */
+char ShouldShowClient(const TaskBarType *bp, const ClientNode *np)
+{
+   if(!ShouldFocus(np, 0)) {
+      return 0;
+   }
+   if(bp->screenFilter != SCREEN_FILTER_ALL
+      && np->screenIndex != GetBarScreen(bp)) {
+      return 0;
+   }
+   return 1;
+}
+
 /** Determine if there is anything to show for the specified entry. */
-char ShouldShowEntry(const TaskEntry *tp)
+char ShouldShowEntry(const TaskBarType *bp, const TaskEntry *tp)
 {
    const ClientEntry *cp;
    for(cp = tp->clients; cp; cp = cp->next) {
-      if(ShouldFocus(cp->client, 0)) {
+      if(ShouldShowClient(bp, cp->client)) {
          return 1;
       }
    }
@@ -1024,7 +1054,7 @@ TaskEntry *GetEntry(TaskBarType *bar, int x, int y)
 
    offset = 0;
    for(tp = taskEntries; tp; tp = tp->next) {
-      if(!ShouldShowEntry(tp)) {
+      if(!ShouldShowEntry(bar, tp)) {
          continue;
       }
       if(bar->layout == LAYOUT_HORIZONTAL) {
@@ -1041,6 +1071,25 @@ TaskEntry *GetEntry(TaskBarType *bar, int x, int y)
    }
 
    return NULL;
+}
+
+/** Set the screen filter for the specified task bar. */
+void SetTaskBarScreenFilter(TrayComponentType *cp, const char *value)
+{
+   TaskBarType *bp = (TaskBarType*)cp->object;
+
+   Assert(cp);
+   Assert(value);
+
+   if(!strcmp(value, "local")) {
+      bp->screenFilter = SCREEN_FILTER_LOCAL;
+   } else if(!strcmp(value, "all")) {
+      bp->screenFilter = SCREEN_FILTER_ALL;
+   } else if(value[0] >= '0' && value[0] <= '9') {
+      bp->screenFilter = atoi(value);
+   } else {
+      Warning(_("invalid screen for TaskList: %s"), value);
+   }
 }
 
 /** Set the maximum width of an item in the task bar. */
