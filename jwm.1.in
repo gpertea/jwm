@@ -700,6 +700,24 @@ or "bottom" is chosen, an alternate method for resizing the task list will be us
 The maximum width of an item in the task list. 0 indicates no maximum.
 The default is 0.
 .RE
+.P
+\fBrows\fP \fIint\fP
+.RS
+The number of button rows for a horizontal task list (1 to 8).
+With more than one row, buttons are placed row-major and the item
+height is the tray height divided by the number of rows.
+The default is 1.
+.RE
+.P
+\fBscreen\fP \fIstring\fP
+.RS
+Limit the task list to clients on a Xinerama screen: "all" shows
+clients from every screen, "local" shows only clients whose dominant
+screen is the screen of the tray containing this task list, and a
+number selects an explicit screen index. A client belongs to the
+screen containing the largest part of its window.
+The default is "all".
+.RE
 .RE
 .P
 .B TrayButton
