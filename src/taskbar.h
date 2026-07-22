@@ -54,6 +54,12 @@ void FocusPrevious(void);
  */
 void SetTaskBarScreenFilter(struct TrayComponentType *cp, const char *value);
 
+/** Set the number of button rows of a horizontal task bar.
+ * @param cp The task bar component.
+ * @param value The number of rows (default 1).
+ */
+void SetTaskBarRows(struct TrayComponentType *cp, const char *value);
+
 /** Set the maximum width of task bar items.
  * @param cp The task bar component.
  * @param value The maximum width.

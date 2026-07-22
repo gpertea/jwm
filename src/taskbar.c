@@ -39,6 +39,8 @@ typedef struct TaskBarType {
    int maxItemWidth;
    int userHeight;
    int screenFilter;
+   unsigned rows;       /**< Requested button rows (horizontal only). */
+   unsigned columns;    /**< Computed button columns. */
    int itemHeight;
    int itemWidth;
    LayoutType layout;
@@ -136,6 +138,8 @@ TrayComponentType *CreateTaskBar()
    tp->userHeight = 0;
    tp->maxItemWidth = 0;
    tp->screenFilter = SCREEN_FILTER_ALL;
+   tp->rows = 1;
+   tp->columns = 1;
    tp->layout = LAYOUT_HORIZONTAL;
    tp->labeled = 1;
    tp->labelPos = LABEL_POSITION_RIGHT;
@@ -217,6 +221,7 @@ void ComputeItemSize(TaskBarType *tp)
    TrayComponentType *cp = tp->cp;
 
    if(tp->layout == LAYOUT_VERTICAL) {
+      tp->columns = 1;
       if(tp->labelPos > LABEL_POSITION_RIGHT) {
          unsigned itemCount = TallyVisibleItems(tp);
          if(itemCount == 0) {
@@ -241,12 +246,15 @@ void ComputeItemSize(TaskBarType *tp)
       }
    } else {
       unsigned itemCount = TallyVisibleItems(tp);
+      unsigned rows;
       if(itemCount == 0) {
          return;
       }
 
-      tp->itemHeight = cp->height;
-      tp->itemWidth = Max(1, cp->width / itemCount);
+      rows = Max(1, tp->rows);
+      tp->columns = Max(1, (itemCount + rows - 1) / rows);
+      tp->itemHeight = Max(1, cp->height / (int)rows);
+      tp->itemWidth = Max(1, cp->width / (int)tp->columns);
 
       if(!tp->labeled) {
          tp->itemWidth = Min(tp->itemHeight, tp->itemWidth);
@@ -807,6 +815,7 @@ void Render(const TaskBarType *bp)
    char *displayName;
    ButtonNode button;
    int x, y;
+   unsigned visible;
 
    if(JUNLIKELY(shouldExit)) {
       return;
@@ -828,10 +837,21 @@ void Render(const TaskBarType *bp)
 
    x = 0;
    y = 0;
+   visible = 0;
    for(tp = taskEntries; tp; tp = tp->next) {
 
       if(!ShouldShowEntry(bp, tp)) {
          continue;
+      }
+
+      /* Row-major placement; a single row reduces to the classic
+       * layout since columns then equals the visible item count. */
+      if(bp->layout == LAYOUT_HORIZONTAL) {
+         x = (visible % bp->columns) * bp->itemWidth;
+         y = (visible / bp->columns) * bp->itemHeight;
+      } else {
+         x = 0;
+         y = visible * bp->itemHeight;
       }
 
       /* Check for an active or urgent window and count clients. */
@@ -887,11 +907,7 @@ void Render(const TaskBarType *bp)
          Release(displayName);
       }
 
-      if(bp->layout == LAYOUT_HORIZONTAL) {
-         x += bp->itemWidth;
-      } else {
-         y += bp->itemHeight;
-      }
+      visible += 1;
    }
 
    UpdateSpecificTray(bp->cp->tray, bp->cp);
@@ -1050,27 +1066,48 @@ char ShouldFocusEntry(const TaskEntry *tp)
 TaskEntry *GetEntry(TaskBarType *bar, int x, int y)
 {
    TaskEntry *tp;
-   int offset;
+   unsigned index, target;
 
-   offset = 0;
+   if(bar->layout == LAYOUT_HORIZONTAL) {
+      const unsigned col = x / Max(1, bar->itemWidth);
+      const unsigned row = y / Max(1, bar->itemHeight);
+      if(col >= bar->columns) {
+         return NULL;
+      }
+      target = row * bar->columns + col;
+   } else {
+      target = y / Max(1, bar->itemHeight);
+   }
+
+   index = 0;
    for(tp = taskEntries; tp; tp = tp->next) {
       if(!ShouldShowEntry(bar, tp)) {
          continue;
       }
-      if(bar->layout == LAYOUT_HORIZONTAL) {
-         offset += bar->itemWidth;
-         if(x < offset) {
-            return tp;
-         }
-      } else {
-         offset += bar->itemHeight;
-         if(y < offset) {
-            return tp;
-         }
+      if(index == target) {
+         return tp;
       }
+      index += 1;
    }
 
    return NULL;
+}
+
+/** Set the number of button rows for the specified task bar. */
+void SetTaskBarRows(TrayComponentType *cp, const char *value)
+{
+   TaskBarType *bp = (TaskBarType*)cp->object;
+   int temp;
+
+   Assert(cp);
+   Assert(value);
+
+   temp = atoi(value);
+   if(JUNLIKELY(temp < 1 || temp > 8)) {
+      Warning(_("invalid rows for TaskList: %s"), value);
+      return;
+   }
+   bp->rows = temp;
 }
 
 /** Set the screen filter for the specified task bar. */
