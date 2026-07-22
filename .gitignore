@@ -19,3 +19,10 @@ po/stamp-*
 src/Makefile
 src/jwm
 doc
+aclocal.m4
+compile
+install-sh
+missing
+stamp-h1
+po/Makefile.in.in
+po/remove-potcdate.sed

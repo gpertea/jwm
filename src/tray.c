@@ -74,6 +74,11 @@ void StartupTray(void)
 
    for(tp = trays; tp; tp = tp->next) {
 
+      if(tp->screen >= GetScreenCount()) {
+         Warning(_("tray screen index %d out of range"), tp->screen);
+         tp->screen = 0;
+      }
+
       LayoutTray(tp, &variableSize, &variableRemainder);
 
       /* Create the tray window. */
