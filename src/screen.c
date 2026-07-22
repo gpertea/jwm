@@ -101,6 +101,39 @@ const ScreenType *GetCurrentScreen(int x, int y)
 
 }
 
+/** Get the screen with the largest overlap with a rectangle. */
+const ScreenType *GetDominantScreen(int x, int y, int width, int height)
+{
+
+   const ScreenType *best;
+   int bestArea;
+   int index;
+
+   best = NULL;
+   bestArea = 0;
+   for(index = 0; index < screenCount; index++) {
+      const ScreenType *sp = &screens[index];
+      const int ix = Max(x, sp->x);
+      const int iy = Max(y, sp->y);
+      const int iw = Min(x + width, sp->x + sp->width) - ix;
+      const int ih = Min(y + height, sp->y + sp->height) - iy;
+      if(iw > 0 && ih > 0) {
+         const int area = iw * ih;
+         if(area > bestArea) {
+            bestArea = area;
+            best = sp;
+         }
+      }
+   }
+   if(best) {
+      return best;
+   }
+
+   /* No overlap with any screen; fall back to the midpoint. */
+   return GetCurrentScreen(x + width / 2, y + height / 2);
+
+}
+
 /** Get the screen the mouse is currently on. */
 const ScreenType *GetMouseScreen(void)
 {
