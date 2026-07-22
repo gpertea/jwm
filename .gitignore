@@ -30,3 +30,4 @@ ABOUT-NLS
 m4/
 po/Makevars.template
 po/Rules-quot
+*~
