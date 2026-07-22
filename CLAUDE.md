@@ -29,7 +29,13 @@ Wanted (this is what tint2 currently provides and JWM cannot):
    the two stacked monitors keep visual continuity. The same
    screen-relative jwmrc semantics should produce sensible bars in
    both the work (row + vertical) and home (stacked) layouts.
-5. Decent taskbar icon handling (tint2 does this better today; some
+5. Per-screen bar height and multi-row task buttons: each bar can be
+   made taller independently to hold 2-3 rows of task buttons.
+   Motivating case: the vertical monitor (1200 wide) fills its single
+   row quickly, so its bar should allow 2-3 rows while the other
+   screens keep 1 - combined with the per-screen filtering in (2),
+   it only holds buttons for windows mostly on that screen anyway.
+6. Decent taskbar icon handling (tint2 does this better today; some
    legacy apps need fallbacks/overrides).
 
 ## Multi-monitor model: static is fine
