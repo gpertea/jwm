@@ -26,3 +26,7 @@ missing
 stamp-h1
 po/Makefile.in.in
 po/remove-potcdate.sed
+ABOUT-NLS
+m4/
+po/Makevars.template
+po/Rules-quot

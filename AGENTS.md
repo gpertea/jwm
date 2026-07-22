@@ -20,6 +20,16 @@ real multi-display desktop running this JWM.
 
 - Autoconf only (no automake): `Makefile.in` is hand-maintained; adding
   a new src/foo.c means editing src/Makefile.in by hand.
+- Bootstrap tool requirements (git checkout only; release tarballs
+  ship `configure`): `autoconf`, `autopoint` (Debian/Ubuntu package
+  `autopoint`, part of gettext), and the `automake` package - NOT for
+  automake itself (there is no Makefile.am) but for its `aclocal`
+  (m4 macro collection) and the aux scripts (`install-sh` etc.) that
+  `automake -ac` copies in. autogen.sh documents each step; its
+  automake invocation prints a harmless "no Makefile.am" error.
+  Keeping autoconf is deliberate: configure.ac does all the feature
+  detection (X extensions, image libs, iconv/NLS) and staying on the
+  upstream build system keeps the fork mergeable with joewing/jwm.
 - New optional X libraries follow the configure.ac pattern: check lib,
   add `AC_DEFINE(USE_FOO)`, guard code with `#ifdef USE_FOO`, include
   the header in src/jwm.h, and report in the configure summary.
