@@ -35,6 +35,17 @@ void ShutdownScreens(void);
  */
 const ScreenType *GetCurrentScreen(int x, int y);
 
+/** Get the screen with the largest overlap with a rectangle.
+ * Falls back to the screen containing the rectangle midpoint when
+ * there is no overlap with any screen.
+ * @param x The x-coordinate of the rectangle.
+ * @param y The y-coordinate of the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @return The screen (never NULL).
+ */
+const ScreenType *GetDominantScreen(int x, int y, int width, int height);
+
 /** Get the screen containing the mouse.
  * @return The screen containing the mouse.
  */
