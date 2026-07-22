@@ -1421,6 +1421,7 @@ void SendConfigureEvent(ClientNode *np)
                                    np->width, np->height)->index;
    if(screenIndex != np->screenIndex) {
       np->screenIndex = screenIndex;
+      MoveClientToTaskBarEnd(np);
       RequireTaskUpdate();
    }
 
