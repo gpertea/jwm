@@ -4,11 +4,13 @@ STATUS: the main feature is IMPLEMENTED and ADOPTED (2026-07-24) -
 jwmx v2.4.7 is the daily-driver WM on both of the owner's sessions
 and tint2 is retired. See README.md (feature summary), jwm.1.in
 (TaskList screen=/rows= reference), TIPS.md (binary hot-swap,
-flameshot-per-display), AGENTS.md (build/test). Remaining work:
-the built-in notification daemon (NEXT major feature - design
-settled in DESIGN-notifications.md), the minor-features roadmap
-below, and optional RandR output names (screen="DP-2"/"primary"
-instead of indices).
+flameshot-per-display), AGENTS.md (build/test). Also DONE
+(2026-07-24): XRandR output names (<Tray screen="DP-2"/"primary">,
+--enable-xrandr) and task-button drag reordering. Upstream PR
+branch `multimonitor-taskbars` (8 code commits cherry-picked onto
+joewing/jwm master, no fork docs) is pushed to origin. Remaining:
+the built-in notification daemon (NEXT major feature - design in
+DESIGN-notifications.md) and the minor-features roadmap below.
 
 This fork exists for ONE main reason: give JWM real per-monitor
 taskbar/tray support so tint2 (and its duct tape) can be removed from
@@ -75,8 +77,8 @@ single daemon opt-in from ~/.jwmrc only (no :0/:1 gymnastics).
 
 ## Roadmap: minor features (after the main one)
 
-- Drag-and-drop reordering of taskbar window buttons (as in Windows
-  taskbar / xfce4-panel).
+- DONE 2026-07-24: drag-and-drop reordering of taskbar window
+  buttons (as in Windows taskbar / xfce4-panel).
 - Proper right-click menu on taskbar buttons (close, move-to-desktop,
   etc.) that works while the window is minimized.
 - Rename window caption/title label (including the taskbar label).
