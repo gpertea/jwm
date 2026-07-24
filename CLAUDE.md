@@ -4,9 +4,11 @@ STATUS: the main feature is IMPLEMENTED and ADOPTED (2026-07-24) -
 jwmx v2.4.7 is the daily-driver WM on both of the owner's sessions
 and tint2 is retired. See README.md (feature summary), jwm.1.in
 (TaskList screen=/rows= reference), TIPS.md (binary hot-swap,
-flameshot-per-display), AGENTS.md (build/test). Remaining work: the
-minor-features roadmap below and optional RandR output names
-(screen="DP-2"/"primary" instead of indices).
+flameshot-per-display), AGENTS.md (build/test). Remaining work:
+the built-in notification daemon (NEXT major feature - design
+settled in DESIGN-notifications.md), the minor-features roadmap
+below, and optional RandR output names (screen="DP-2"/"primary"
+instead of indices).
 
 This fork exists for ONE main reason: give JWM real per-monitor
 taskbar/tray support so tint2 (and its duct tape) can be removed from
@@ -59,6 +61,17 @@ Wanted (this is what tint2 currently provides and JWM cannot):
 - The only things Xinerama lacks are output NAMES and the primary
   flag. If per-name config (screen="DP-2") is wanted, add a tiny
   optional RandR name query at startup - still no event handling.
+
+## Next major feature: built-in notification daemon
+
+Make jwmx fully standalone: after tint2 (done), eliminate
+xfce4-notifyd. jwmx implements the org.freedesktop.Notifications
+display/daemon half natively (libdbus-1, #ifdef USE_DBUS, popup.c
+reuse, per-screen placement); network protocol bridges (Pushover
+etc.) stay external and dumb, feeding the standard interface.
+Full design and settled decisions: DESIGN-notifications.md.
+v1 scope: summary/body/urgency/timeout; no actions, no history,
+single daemon opt-in from ~/.jwmrc only (no :0/:1 gymnastics).
 
 ## Roadmap: minor features (after the main one)
 
