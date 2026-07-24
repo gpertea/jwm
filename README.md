@@ -19,6 +19,10 @@ dependencies. See the jwm(1) man page (TaskList) for details.
    and is appended to the new screen's bar.
  - `<TaskList rows="2"/>` lays out task buttons in multiple rows on a
    horizontal bar (make the tray taller to match).
+ - Task buttons can be reordered by dragging them with the left
+   mouse button.
+ - With XRandR available, trays can name screens by output:
+   `<Tray screen="DP-2">` or `<Tray screen="primary">`.
 
 Example: a bottom bar on each of two monitors, each listing only its
 own windows, with a two-row bar on the second:

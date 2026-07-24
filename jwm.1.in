@@ -676,6 +676,8 @@ the default.
 .B TaskList
 .RS
 Add a task list to the tray.
+Task buttons can be reordered by dragging them with the left mouse
+button; a click without dragging activates or minimizes the task.
 This tag supports the following attributes:
 .P
 \fBheight\fP \fIint\fP
