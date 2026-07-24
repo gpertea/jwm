@@ -19,6 +19,8 @@ typedef struct ScreenType {
    int index;           /**< The index of this screen. */
    int x, y;            /**< The location of this screen. */
    int width, height;   /**< The size of this screen. */
+   char *name;          /**< RandR output name (NULL if unknown). */
+   char primary;        /**< 1 if this is the primary output. */
 } ScreenType;
 
 /*@{*/
@@ -61,6 +63,13 @@ const ScreenType *GetScreen(int index);
  * @return The number of screens.
  */
 int GetScreenCount(void);
+
+/** Find a screen by RandR output name.
+ * The name "primary" matches the primary output.
+ * @param name The output name (e.g. "DP-2").
+ * @return The screen index or -1 if not found (or names unknown).
+ */
+int FindScreenByName(const char *name);
 
 #endif /* SCREEN_H */
 
