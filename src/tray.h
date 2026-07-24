@@ -129,6 +129,8 @@ typedef struct TrayType {
    int requestedY;      /**< The user-requested y-coordinate of the tray. */
 
    int screen;       /**< The screen index (0 by default). */
+   char *screenName; /**< Requested screen by RandR output name
+                          (resolved to an index at startup). */
    int x;            /**< The x-coordinate of the tray. */
    int y;            /**< The y-coordinate of the tray. */
 
