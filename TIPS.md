@@ -71,7 +71,10 @@ the system tray the icon lives in):
     ...
     <Key mask="CA" key="P">exec:/path/to/flameshot-vnc gui</Key>
 
-Tradeoffs: desktop notifications from the isolated instance go
-nowhere (its private bus has no notification daemon); both instances
-share `~/.config/flameshot`. The same pattern should apply to other
-Qt apps using the SingleApplication library plus a D-Bus service.
+Notifications: if a D-Bus-activatable notification daemon is
+installed (e.g. xfce4-notifyd), the private bus auto-activates its
+own instance on first use, inheriting the wrapper's DISPLAY - so
+notifications from the isolated flameshot correctly appear on the
+VNC display. Both instances share `~/.config/flameshot`. The same
+pattern should apply to other Qt apps using the SingleApplication
+library plus a D-Bus service.
