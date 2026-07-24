@@ -56,7 +56,25 @@ No unit tests. Verification ladder:
        <Exit label="Swap JWM" confirm="false">/data/gpertea/work/jwm/src/jwm</Exit>
 
    (Add that to the root menu in ~/.jwmrc, then Exit via the menu.)
-   Keep a fallback terminal or `ssh` session open when testing live.
+   The owner's ~/.jwmrc and ~/.jwmrc-vnc already have Dev/Installed/
+   Stock switch entries; see TIPS.md for the crash-safe wrapper
+   pattern. Keep a fallback terminal or `ssh` session open when
+   testing live.
+
+### Xephyr testing gotchas (hard-won; do not rediscover)
+
+- The VNC session on :1 runs its own `jwm -f ~/.jwmrc-vnc` - NEVER
+  pkill by a bare "jwm" pattern; match the full command line.
+- Root regions outside the emulated Xinerama screens keep stale
+  framebuffer garbage (can look like duplicated/tiled bars). Run
+  `xsetroot -solid grey30` before screenshots; trust
+  `xwininfo -root -tree` for actual window geometry, not the image.
+- To test a WM-mediated move (taskbar migration, struts), use
+  `wmctrl -i -r <id> -e 0,X,Y,-1,-1` with ids from `wmctrl -l`.
+  `xdotool windowmove` bypasses the WM (it moves the widget inside
+  the frame) and xterm's inner widget id is NOT the client window.
+- Shell prompts overwrite xterm titles; for stable labels in
+  screenshots use `xterm -T NAME -e sleep 1000`.
 
 ## Code style (upstream is strict; PRs are expected to match)
 

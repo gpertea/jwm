@@ -1,5 +1,13 @@
 # Project goal: jwm-extended (multi-monitor JWM)
 
+STATUS: the main feature is IMPLEMENTED and ADOPTED (2026-07-24) -
+jwmx v2.4.7 is the daily-driver WM on both of the owner's sessions
+and tint2 is retired. See README.md (feature summary), jwm.1.in
+(TaskList screen=/rows= reference), TIPS.md (binary hot-swap,
+flameshot-per-display), AGENTS.md (build/test). Remaining work: the
+minor-features roadmap below and optional RandR output names
+(screen="DP-2"/"primary" instead of indices).
+
 This fork exists for ONE main reason: give JWM real per-monitor
 taskbar/tray support so tint2 (and its duct tape) can be removed from
 the owner's desktop. Guiding constraint: JWM's lightness is a feature.
@@ -77,13 +85,14 @@ Wanted (this is what tint2 currently provides and JWM cannot):
       DP-0  1920x1200 +5040+487
   Layout set by ~/.screenlayout/4m_valign.sh, called from ~/.xinitrc
   before "exec jwm".
-- Current duct tape that this project should make unnecessary:
-  - tint2 started from ~/.xinitrc providing per-monitor taskbars.
-  - ~/.screenlayout/wm-tint-mv.sh repositions the tint2 panels with
-    wmctrl (sorted by X coordinate; the 3rd one is the vertical
-    screen and needs a different Y), run as a jwm StartupCommand and
-    from a "Realign taskbars" root-menu entry.
-  - ~/.jwmrc Group hack pinning Tint2 windows (sticky, y:1534) and a
-    single jwm Tray at the bottom of the primary screen with a
-    1532px Spacer to leave room for tint2.
-- Live binary hot-swap and build/test workflow: see AGENTS.md.
+- Xinerama index order on :0 is NOT the xrandr order (match
+  rectangles via `xdpyinfo -ext XINERAMA`, never assume):
+  0=DP-6, 1=DP-0, 2=DP-2 (vertical), 3=DP-4.
+- Deployment (since 2026-07-24): /usr/local/bin/jwm is the installed
+  jwmx (release build); stock v2.4.4 kept at /usr/bin/jwm as
+  fallback. ~/.jwmrc (4 per-screen bars) and ~/.jwmrc-vnc both have
+  Dev(src/jwm)/Installed/Stock root-menu switch entries; tint2 and
+  wm-tint-mv.sh are gone from ~/.xinitrc. Pre-adoption backups:
+  ~/.jwmrc.og, ~/.jwmrc-vnc.og, ~/.xinitrc.og.
+- Live binary hot-swap and build/test workflow: see AGENTS.md and
+  TIPS.md.
