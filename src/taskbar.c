@@ -52,6 +52,10 @@ typedef struct TaskBarType {
    TimeType mouseTime;
    int mousex, mousey;
 
+   struct TaskEntry *dragEntry;  /**< Pressed entry (drag candidate). */
+   int dragx, dragy;             /**< Position of the button press. */
+   char dragging;                /**< 1 once a drag is in progress. */
+
 } TaskBarType;
 
 typedef struct ClientEntry {
@@ -86,6 +90,10 @@ static void Create(TrayComponentType *cp);
 static void Resize(TrayComponentType *cp);
 static void ProcessTaskButtonEvent(TrayComponentType *cp,
                                    int x, int y, int mask);
+static void ProcessTaskButtonRelease(TrayComponentType *cp,
+                                     int x, int y, int mask);
+static void HandleTaskClick(TaskEntry *entry);
+static void MoveTaskEntry(TaskEntry *entry, TaskEntry *target);
 static void MinimizeGroup(const TaskEntry *tp);
 static void FocusGroup(const TaskEntry *tp);
 static char IsGroupOnTop(const TaskEntry *entry);
@@ -147,6 +155,10 @@ TrayComponentType *CreateTaskBar()
    tp->mousey = -settings.doubleClickDelta;
    tp->mouseTime.seconds = 0;
    tp->mouseTime.ms = 0;
+   tp->dragEntry = NULL;
+   tp->dragx = 0;
+   tp->dragy = 0;
+   tp->dragging = 0;
 
    cp = CreateTrayComponent();
    cp->object = tp;
@@ -156,6 +168,7 @@ TrayComponentType *CreateTaskBar()
    cp->Create = Create;
    cp->Resize = Resize;
    cp->ProcessButtonPress = ProcessTaskButtonEvent;
+   cp->ProcessButtonRelease = ProcessTaskButtonRelease;
    cp->ProcessMotionEvent = ProcessTaskMotionEvent;
 
    RegisterCallback(settings.popupDelay / 2, SignalTaskbar, tp);
@@ -303,100 +316,23 @@ void ProcessTaskButtonEvent(TrayComponentType *cp, int x, int y, int mask)
    TaskEntry *entry = GetEntry(bar, x, y);
 
    if(entry) {
-      ClientEntry *cp;
-      ClientNode *focused = NULL;
-      char hasActive = 0;
-      char allTop;
+      ClientEntry *cp2;
 
       switch(mask) {
-      case Button1:  /* Raise or minimize items in this group. */
-
-         allTop = IsGroupOnTop(entry);
-         if(allTop) {
-            for(cp = entry->clients; cp; cp = cp->next) {
-               int layer;
-               if(cp->client->state.status & STAT_MINIMIZED) {
-                  continue;
-               } else if(!ShouldFocus(cp->client, 0)) {
-                  continue;
-               }
-               for(layer = LAST_LAYER; layer >= FIRST_LAYER; layer--) {
-                  ClientNode *np;
-                  for(np = nodes[layer]; np; np = np->next) {
-                     if(np->state.status & STAT_MINIMIZED) {
-                        continue;
-                     } else if(!ShouldFocus(np, 0)) {
-                        continue;
-                     }
-                     if(np == cp->client) {
-                        const char isActive = (np->state.status & STAT_ACTIVE)
-                                            && IsClientOnCurrentDesktop(np);
-                        if(isActive) {
-                           focused = np;
-                        }
-                        if(!(cp->client->state.status
-                              & (STAT_CANFOCUS | STAT_TAKEFOCUS))
-                           || isActive) {
-                           hasActive = 1;
-                        }
-                     }
-                     if(hasActive) {
-                        goto FoundActiveAndTop;
-                     }
-                  }
-               }
-            }
+      case Button1:
+         /* Arm a possible drag; the click action runs on release
+          * if no drag took place. */
+         if(GrabMouse(cp->tray->window)) {
+            cp->grabbed = 1;
          }
-FoundActiveAndTop:
-         if(hasActive && allTop) {
-            /* The client is already active.
-             * Here we switch desktops if the client is on another
-             * desktop too. Otherwise we minimize the client.
-             */
-            ClientNode *nextClient = NULL;
-            int i;
-
-            /* Try to find a client on a different desktop. */
-            for(i = 0; i < settings.desktopCount - 1; i++) {
-               const int target = (currentDesktop + i + 1)
-                                % settings.desktopCount;
-               for(cp = entry->clients; cp; cp = cp->next) {
-                  ClientNode *np = cp->client;
-                  if(!ShouldFocus(np, 0)) {
-                     continue;
-                  } else if(np->state.status & STAT_STICKY) {
-                     continue;
-                  } else if(np->state.desktop == target) {
-                     if(!nextClient || np->state.status & STAT_ACTIVE) {
-                        nextClient = np;
-                     }
-                  }
-               }
-               if(nextClient) {
-                  break;
-               }
-            }
-            /* Focus the next client or minimize the current group. */
-            if(nextClient) {
-               ChangeDesktop(nextClient->state.desktop);
-               RestoreClient(nextClient, 1);
-            } else {
-               MinimizeGroup(entry);
-            }
-         } else {
-            /* The group was not currently on top, raise the group. */
-            FocusGroup(entry);
-            if(focused) {
-               /* If the group already contained the active client,
-                * ensure that the same client remains active.
-                */
-               FocusClient(focused);
-            }
-         }
+         bar->dragEntry = entry;
+         bar->dragx = x;
+         bar->dragy = y;
+         bar->dragging = 0;
          break;
       case Button2:
-         for(cp = entry->clients; cp; cp = cp->next) {
-      	    DeleteClient(cp->client);
+         for(cp2 = entry->clients; cp2; cp2 = cp2->next) {
+      	    DeleteClient(cp2->client);
          }
          break;
       case Button3:
@@ -410,6 +346,115 @@ FoundActiveAndTop:
          break;
       default:
          break;
+      }
+   }
+
+}
+
+/** Handle a button release on the task bar. */
+void ProcessTaskButtonRelease(TrayComponentType *cp, int x, int y, int mask)
+{
+   TaskBarType *bar = (TaskBarType*)cp->object;
+   if(mask == Button1) {
+      if(bar->dragEntry && !bar->dragging) {
+         if(GetEntry(bar, x, y) == bar->dragEntry) {
+            HandleTaskClick(bar->dragEntry);
+         }
+      }
+      bar->dragEntry = NULL;
+      bar->dragging = 0;
+   }
+}
+
+/** Handle a (non-drag) left click on a task entry:
+ * raise or minimize the items in the group. */
+void HandleTaskClick(TaskEntry *entry)
+{
+   ClientEntry *cp;
+   ClientNode *focused = NULL;
+   char hasActive = 0;
+   char allTop;
+
+   allTop = IsGroupOnTop(entry);
+   if(allTop) {
+      for(cp = entry->clients; cp; cp = cp->next) {
+         int layer;
+         if(cp->client->state.status & STAT_MINIMIZED) {
+            continue;
+         } else if(!ShouldFocus(cp->client, 0)) {
+            continue;
+         }
+         for(layer = LAST_LAYER; layer >= FIRST_LAYER; layer--) {
+            ClientNode *np;
+            for(np = nodes[layer]; np; np = np->next) {
+               if(np->state.status & STAT_MINIMIZED) {
+                  continue;
+               } else if(!ShouldFocus(np, 0)) {
+                  continue;
+               }
+               if(np == cp->client) {
+                  const char isActive = (np->state.status & STAT_ACTIVE)
+                                      && IsClientOnCurrentDesktop(np);
+                  if(isActive) {
+                     focused = np;
+                  }
+                  if(!(cp->client->state.status
+                        & (STAT_CANFOCUS | STAT_TAKEFOCUS))
+                     || isActive) {
+                     hasActive = 1;
+                  }
+               }
+               if(hasActive) {
+                  goto FoundActiveAndTop;
+               }
+            }
+         }
+      }
+   }
+FoundActiveAndTop:
+   if(hasActive && allTop) {
+      /* The client is already active.
+       * Here we switch desktops if the client is on another
+       * desktop too. Otherwise we minimize the client.
+       */
+      ClientNode *nextClient = NULL;
+      int i;
+
+      /* Try to find a client on a different desktop. */
+      for(i = 0; i < settings.desktopCount - 1; i++) {
+         const int target = (currentDesktop + i + 1)
+                          % settings.desktopCount;
+         for(cp = entry->clients; cp; cp = cp->next) {
+            ClientNode *np = cp->client;
+            if(!ShouldFocus(np, 0)) {
+               continue;
+            } else if(np->state.status & STAT_STICKY) {
+               continue;
+            } else if(np->state.desktop == target) {
+               if(!nextClient || np->state.status & STAT_ACTIVE) {
+                  nextClient = np;
+               }
+            }
+         }
+         if(nextClient) {
+            break;
+         }
+      }
+      /* Focus the next client or minimize the current group. */
+      if(nextClient) {
+         ChangeDesktop(nextClient->state.desktop);
+         RestoreClient(nextClient, 1);
+      } else {
+         MinimizeGroup(entry);
+      }
+   } else {
+      /* The group was not currently on top, raise the group. */
+      FocusGroup(entry);
+      if(focused) {
+         /* If the group already contained the active client,
+          * ensure that the same client remains active.
+          */
+         FocusClient(focused);
       }
    }
 
@@ -512,6 +557,74 @@ void ProcessTaskMotionEvent(TrayComponentType *cp, int x, int y, int mask)
    bp->mousex = cp->screenx + x;
    bp->mousey = cp->screeny + y;
    GetCurrentTime(&bp->mouseTime);
+
+   /* Drag reordering of task buttons. */
+   if(bp->dragEntry && (mask & Button1Mask)) {
+      if(!bp->dragging) {
+         if(abs(x - bp->dragx) > (int)settings.doubleClickDelta
+            || abs(y - bp->dragy) > (int)settings.doubleClickDelta) {
+            bp->dragging = 1;
+         }
+      }
+      if(bp->dragging) {
+         TaskEntry *target = GetEntry(bp, x, y);
+         if(target && target != bp->dragEntry) {
+            MoveTaskEntry(bp->dragEntry, target);
+         }
+      }
+   }
+}
+
+/** Move a task entry to another entry's position (drag reorder). */
+void MoveTaskEntry(TaskEntry *entry, TaskEntry *target)
+{
+   TaskEntry *tp;
+   char isBefore;
+
+   /* Determine whether entry currently precedes target. */
+   isBefore = 0;
+   for(tp = entry->next; tp; tp = tp->next) {
+      if(tp == target) {
+         isBefore = 1;
+         break;
+      }
+   }
+
+   /* Unlink the entry. */
+   if(entry->prev) {
+      entry->prev->next = entry->next;
+   } else {
+      taskEntries = entry->next;
+   }
+   if(entry->next) {
+      entry->next->prev = entry->prev;
+   } else {
+      taskEntriesTail = entry->prev;
+   }
+
+   if(isBefore) {
+      /* Moving forward: insert after target. */
+      entry->prev = target;
+      entry->next = target->next;
+      if(target->next) {
+         target->next->prev = entry;
+      } else {
+         taskEntriesTail = entry;
+      }
+      target->next = entry;
+   } else {
+      /* Moving backward: insert before target. */
+      entry->next = target;
+      entry->prev = target->prev;
+      if(target->prev) {
+         target->prev->next = entry;
+      } else {
+         taskEntries = entry;
+      }
+      target->prev = entry;
+   }
+
+   RequireTaskUpdate();
 }
 
 /** Show the menu associated with a task list item. */
@@ -727,6 +840,14 @@ void RemoveClientFromTaskBar(ClientNode *np)
             }
             Release(cp);
             if(!tp->clients) {
+               TaskBarType *bp;
+               /* Forget any drag state referencing this entry. */
+               for(bp = bars; bp; bp = bp->next) {
+                  if(bp->dragEntry == tp) {
+                     bp->dragEntry = NULL;
+                     bp->dragging = 0;
+                  }
+               }
                if(tp->prev) {
                   tp->prev->next = tp->next;
                } else {
