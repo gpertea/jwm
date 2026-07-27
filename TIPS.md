@@ -21,12 +21,21 @@ Notes:
 - The freshly exec'd jwm is a new process, so `<StartupCommand>`s run
   again (they do NOT run on `<Restart/>`). Expect one-time duplicates
   of anything they spawn.
-- For crash-safe testing of an experimental build, exec a wrapper
-  script instead, with a known-good fallback after it:
+- Always `exec` the new WM directly, as above. It is tempting to wrap
+  an experimental build in a fallback script for crash safety:
 
       #!/bin/sh
       /path/to/test/jwm -f "$HOME/.jwmrc-test" >>"$HOME/.jwm-test.log" 2>&1
-      exec /usr/bin/jwm    # reached on crash OR normal exit
+      exec /usr/bin/jwm    # "fallback"
+
+  Do not. The script does not exec the test build, so it stays alive
+  waiting on it, and the fallback line runs on a NORMAL exit just as
+  much as on a crash: picking Exit restarts the fallback WM instead of
+  ending the session. Worse, invoking the wrapper again from the new
+  WM's menu stacks another waiting copy, so N invocations need N+1
+  Exits to log out, each unwind resurrecting whatever the script
+  starts. If you want a fallback, put it in `~/.xinitrc` (which is
+  already the outermost frame) rather than in the exec chain.
 
 ## Two flameshot instances on one machine (one per X display)
 
