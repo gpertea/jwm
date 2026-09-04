@@ -431,6 +431,15 @@ void HandleButtonEvent(const XButtonEvent *event)
          const char move_resize = (np->state.status & STAT_DRAG)
             || ((mask == settings.moveMask)
                && !(np->state.status & STAT_NODRAG));
+         const char replay_early = event->type == ButtonPress
+            && !move_resize;
+
+         /* Do not hold the synchronous passive grab while focusing or
+          * rendering.  Those operations may wait for the X server. */
+         if(replay_early) {
+            JXAllowEvents(display, ReplayPointer, eventTime);
+            JXFlush(display);
+         }
          switch(event->button) {
          case Button1:
          case Button2:
@@ -460,7 +469,9 @@ void HandleButtonEvent(const XButtonEvent *event)
          default:
             break;
          }
-         JXAllowEvents(display, ReplayPointer, eventTime);
+         if(!replay_early) {
+            JXAllowEvents(display, ReplayPointer, eventTime);
+         }
       }
    }
 }
