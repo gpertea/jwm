@@ -11,6 +11,7 @@
 #include "main.h"
 #include "parse.h"
 #include "help.h"
+#include "remote.h"
 #include "error.h"
 #include "event.h"
 
@@ -111,8 +112,11 @@ int main(int argc, char *argv[])
       COMMAND_RESTART,
       COMMAND_EXIT,
       COMMAND_RELOAD,
-      COMMAND_PARSE
+      COMMAND_PARSE,
+      COMMAND_REMOTE
    } action;
+   const char *remoteCommand = NULL;
+   const char *remoteArgument = NULL;
 
    StartDebug();
 
@@ -133,6 +137,17 @@ int main(int argc, char *argv[])
          action = COMMAND_EXIT;
       } else if(!strcmp(argv[x], "-reload")) {
          action = COMMAND_RELOAD;
+      } else if(!strcmp(argv[x], "-remote") && x + 1 < argc) {
+         action = COMMAND_REMOTE;
+         remoteCommand = argv[++x];
+         if(RemoteCommandNeedsWindow(remoteCommand)) {
+            if(x + 1 >= argc) {
+               printf("missing window ID for remote command: %s\n",
+                      remoteCommand);
+               DoExit(1);
+            }
+            remoteArgument = argv[++x];
+         }
       } else if(!strcmp(argv[x], "-display") && x + 1 < argc) {
          displayString = argv[++x];
       } else if(!strcmp(argv[x], "-f") && x + 1 < argc) {
@@ -161,6 +176,9 @@ int main(int argc, char *argv[])
    case COMMAND_RELOAD:
       SendReload();
       DoExit(0);
+   case COMMAND_REMOTE:
+      x = RunRemoteCommand(remoteCommand, remoteArgument, displayString);
+      DoExit(x);
    default:
       break;
    }
@@ -669,4 +687,3 @@ void SendJWMMessage(const char *message)
    JXSendEvent(display, rootWindow, False, SubstructureRedirectMask, &event);
    CloseConnection();
 }
-

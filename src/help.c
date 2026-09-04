@@ -77,6 +77,10 @@ void DisplayHelp(void)
           "  -f file     Use specified configuration file\n"
           "  -h          Display this help message\n"
           "  -p          Parse the configuration file and exit\n"
+          "  -remote C [W]\n"
+          "              Run remote command C on window W\n"
+          "              Commands: list, status, activate, raise, lower,\n"
+          "                        show, hide\n"
           "  -reload     Reload menu (send _JWM_RELOAD to the root)\n"
           "  -restart    Restart JWM (send _JWM_RESTART to the root)\n"
           "  -v          Display version information\n");
@@ -88,4 +92,3 @@ void DisplayUsage(void)
    DisplayAbout();
    printf("usage: jwm [ options ]\n");
 }
-

@@ -38,6 +38,26 @@ It is a good idea to use this after making modifications to the configuration
 file to ensure there are no errors.
 .RE
 .P
+.B "-remote command [window]"
+.RS
+Control windows using a separate X connection. The available commands are
+.BR list ,
+.BR status ,
+.BR activate ,
+.BR raise ,
+.BR lower ,
+.BR show ,
+and
+.BR hide .
+All commands except
+.B list
+require a numeric X window ID. The
+.B activate
+command sends the standard _NET_ACTIVE_WINDOW request, then directly maps and
+raises the window manager frame and sets X input focus. This remains available
+when the running JWM process is blocked and cannot process client messages.
+.RE
+.P
 .B "-restart"
 .RS
 Restart JWM by sending _JWM_RESTART to the root window.
@@ -2204,4 +2224,3 @@ Joe Wingbermuehle <joewing@joewing.net>
 
 .SH "SEE ALSO"
 .BR X (1)
-

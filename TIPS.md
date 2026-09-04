@@ -3,6 +3,31 @@
 Unusual setups and workarounds that do not belong in the main
 documentation. Nothing here is required to use jwm.
 
+## Emergency remote window control
+
+The normal way to activate a window from another process is an EWMH
+`_NET_ACTIVE_WINDOW` request, as sent by `wmctrl -ia WINDOW`. A blocked window
+manager cannot process that request. Focusing only the client with a generic
+X11 tool is also insufficient when another JWM frame remains above it.
+
+This fork provides an out-of-process emergency controller in the JWM binary:
+
+```sh
+jwm -display :1 -remote list
+jwm -display :1 -remote status 0x20155a
+jwm -display :1 -remote activate 0x20155a
+```
+
+`activate` first sends the normal EWMH request. It then independently resolves
+the client window's top-level JWM frame, maps and raises that frame, and sets X
+input focus to the client. Because the controller is a separate process with a
+separate X connection, it remains usable when the running JWM event loop is
+blocked.
+
+Additional direct commands are `raise`, `lower`, `show`, and `hide`. These are
+emergency operations: they can temporarily disagree with JWM's internal active
+window or minimized state until the window manager becomes responsive again.
+
 ## Swapping the window manager binary without ending the X session
 
 `jwm -restart` re-runs the main loop in the same process; it never
