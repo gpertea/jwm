@@ -92,6 +92,30 @@ sure the configuration file is free of errors.  Otherwise you may end up
 without a root menu.
 .RE
 .P
+.B "INITIAL WINDOW PLACEMENT"
+.RS
+The top-level \fBPlacement\fP element reserves a physical monitor for
+manually moved windows:
+.P
+<Placement exclude="DP-0"/>
+.P
+\fBexclude\fP is a RandR output name, \fBprimary\fP, or a zero-based
+Xinerama screen index. Repeat the element to exclude more screens.
+New managed windows avoid excluded screens, including application-saved
+positions and positions specified by a Group. The mouse screen is used
+when allowed; otherwise JWM uses the primary allowed screen, then the
+first allowed screen.
+.P
+Existing windows retain their positions on restart. Manual movement and
+later application-requested movement remain unrestricted. Application-owned
+popups that bypass the window manager are not affected.
+.P
+Output names require XRandR support. Unknown screens warn and are ignored.
+If all screens are excluded, JWM warns and allows the primary screen,
+or screen 0 if no primary is known. Screen geometry is read at startup;
+restart JWM after changing the monitor layout.
+.RE
+.P
 .B "ROOT MENU"
 .RS
 The root menu in JWM is the primary way of starting programs.

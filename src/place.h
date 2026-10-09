@@ -27,8 +27,13 @@ typedef struct BoundingBox {
 #define InitializePlacement() (void)(0)
 void StartupPlacement(void);
 void ShutdownPlacement(void);
-#define DestroyPlacement()    (void)(0)
+void DestroyPlacement(void);
 /*@}*/
+
+/** Exclude a screen from initial window placement.
+ * @param screen A RandR output name, "primary", or Xinerama index.
+ */
+void AddPlacementExclude(const char *screen);
 
 /** Remove struts associated with a client.
  * @param np The client.

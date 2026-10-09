@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 <JWM>
+    <!-- reserve an output for windows moved there manually (optional) -->
+    <!-- <Placement exclude="DP-0"/> -->
 
     <!-- The root menu. -->
     <RootMenu onroot="12">

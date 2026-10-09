@@ -71,6 +71,7 @@ static const StringMappingType TOKEN_MAP[] = {
    { "Outline",              TOK_OUTLINE              },
    { "Pager",                TOK_PAGER                },
    { "PagerStyle",           TOK_PAGERSTYLE           },
+   { "Placement",            TOK_PLACEMENT            },
    { "Popup",                TOK_POPUP                },
    { "PopupStyle",           TOK_POPUPSTYLE           },
    { "Program",              TOK_PROGRAM              },

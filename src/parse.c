@@ -33,6 +33,7 @@
 #include "desktop.h"
 #include "border.h"
 #include "default.h"
+#include "place.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -387,6 +388,17 @@ void Parse(const TokenNode *start, int depth)
                break;
             case TOK_PAGERSTYLE:
                ParsePagerStyle(tp);
+               break;
+            case TOK_PLACEMENT:
+               {
+                  const char *exclude = FindAttribute(tp->attributes,
+                                                       "exclude");
+                  if(exclude && exclude[0]) {
+                     AddPlacementExclude(exclude);
+                  } else {
+                     ParseError(tp, _("Placement requires an exclude screen"));
+                  }
+               }
                break;
             case TOK_POPUPSTYLE:
                ParsePopupStyle(tp);

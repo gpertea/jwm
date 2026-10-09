@@ -16,6 +16,7 @@
 #include "settings.h"
 #include "clientlist.h"
 #include "misc.h"
+#include "error.h"
 
 typedef struct Strut {
    ClientNode *client;
@@ -24,6 +25,14 @@ typedef struct Strut {
 } Strut;
 
 static Strut *struts = NULL;
+
+typedef struct PlacementExclude {
+   char *screen;
+   struct PlacementExclude *next;
+} PlacementExclude;
+
+static PlacementExclude *placementExcludes = NULL;
+static char *excludedScreens = NULL;
 
 /* desktopCount x screenCount */
 /* Note that we assume x and y are 0 based for all screens here. */
@@ -36,7 +45,9 @@ static int IntComparator(const void *a, const void *b);
 static int TryTileClient(const BoundingBox *box, ClientNode *np,
                          int x, int y);
 static char TileClient(const BoundingBox *box, ClientNode *np);
-static void CascadeClient(const BoundingBox *box, ClientNode *np);
+static void CascadeClient(const BoundingBox *box, ClientNode *np,
+                          const ScreenType *sp);
+static const ScreenType *GetPlacementScreen(const ScreenType *preferred);
 
 static void SubtractStrutBounds(BoundingBox *box, const ClientNode *np);
 static void SubtractBounds(const BoundingBox *src, BoundingBox *dest);
@@ -49,6 +60,35 @@ void StartupPlacement(void)
    const unsigned titleHeight = GetTitleHeight();
    int count;
    int x;
+   PlacementExclude *ep;
+
+   /* resolve names only after screen geometry and RandR names are known */
+   if(placementExcludes) {
+      const int screenCount = GetScreenCount();
+      int allowed = screenCount;
+      excludedScreens = Allocate(screenCount);
+      memset(excludedScreens, 0, screenCount);
+      for(ep = placementExcludes; ep; ep = ep->next) {
+         char *end;
+         const long index = strtol(ep->screen, &end, 10);
+         x = end != ep->screen && !*end && index >= 0
+             && index < screenCount ? (int)index
+                                    : FindScreenByName(ep->screen);
+         if(x < 0) {
+            Warning(_("placement screen \"%s\" not found"), ep->screen);
+         } else if(!excludedScreens[x]) {
+            excludedScreens[x] = 1;
+            --allowed;
+         }
+      }
+      if(!allowed) {
+         /* keep a usable destination even with an impossible configuration */
+         x = FindScreenByName("primary");
+         x = x >= 0 ? x : 0;
+         excludedScreens[x] = 0;
+         Warning(_("all placement screens excluded; using screen %d"), x);
+      }
+   }
 
    count = settings.desktopCount * GetScreenCount();
    cascadeOffsets = Allocate(count * sizeof(int));
@@ -67,6 +107,11 @@ void ShutdownPlacement(void)
    Strut *sp;
 
    Release(cascadeOffsets);
+   cascadeOffsets = NULL;
+   if(excludedScreens) {
+      Release(excludedScreens);
+      excludedScreens = NULL;
+   }
 
    while(struts) {
       sp = struts->next;
@@ -74,6 +119,47 @@ void ShutdownPlacement(void)
       struts = sp;
    }
 
+}
+
+/** Destroy placement configuration. */
+void DestroyPlacement(void)
+{
+   while(placementExcludes) {
+      PlacementExclude *next = placementExcludes->next;
+      Release(placementExcludes->screen);
+      Release(placementExcludes);
+      placementExcludes = next;
+   }
+}
+
+/** Exclude a screen from initial placement. */
+void AddPlacementExclude(const char *screen)
+{
+   PlacementExclude *ep = Allocate(sizeof(PlacementExclude));
+   ep->screen = CopyString(screen);
+   ep->next = placementExcludes;
+   placementExcludes = ep;
+}
+
+/** Prefer the requested screen, then primary, then the first allowed. */
+const ScreenType *GetPlacementScreen(const ScreenType *preferred)
+{
+   int x;
+   if(!excludedScreens || !excludedScreens[preferred->index]) {
+      return preferred;
+   }
+   for(x = 0; x < GetScreenCount(); x++) {
+      const ScreenType *sp = GetScreen(x);
+      if(sp->primary && !excludedScreens[x]) {
+         return sp;
+      }
+   }
+   for(x = 0; x < GetScreenCount(); x++) {
+      if(!excludedScreens[x]) {
+         return GetScreen(x);
+      }
+   }
+   return preferred;
 }
 
 /** Remove struts associated with a client. */
@@ -591,16 +677,15 @@ char TileClient(const BoundingBox *box, ClientNode *np)
 }
 
 /** Cascade placement. */
-void CascadeClient(const BoundingBox *box, ClientNode *np)
+void CascadeClient(const BoundingBox *box, ClientNode *np,
+                   const ScreenType *sp)
 {
-   const ScreenType *sp;
    const unsigned titleHeight = GetTitleHeight();
    int north, south, east, west;
    int cascadeIndex;
    char overflow;
 
    GetBorderSize(&np->state, &north, &south, &east, &west);
-   sp = GetMouseScreen();
    cascadeIndex = sp->index * settings.desktopCount + currentDesktop;
 
    /* Set the cascaded location. */
@@ -645,38 +730,52 @@ void PlaceClient(ClientNode *np, char alreadyMapped)
 
    Assert(np);
 
-   if(alreadyMapped
-      || (np->state.status & STAT_POSITION)
+   /* preserve existing windows when restarting or replacing the WM */
+   if(alreadyMapped) {
+      GravitateClient(np, 0);
+      return;
+   }
+
+   if((np->state.status & STAT_POSITION)
       || (!(np->state.status & STAT_PIGNORE)
          && (np->sizeFlags & (PPosition | USPosition)))) {
 
       GravitateClient(np, 0);
-      if(!alreadyMapped) {
+      ConstrainSize(np);
+      ConstrainPosition(np);
+
+      /* saved app positions and group positions obey the same exclusion */
+      sp = GetDominantScreen(np->x, np->y, np->width, np->height);
+      if(!excludedScreens || !excludedScreens[sp->index]) {
+         return;
+      }
+   }
+
+   sp = GetPlacementScreen(GetMouseScreen());
+   GetScreenBounds(sp, &box);
+   SubtractTrayBounds(&box, np->state.layer);
+   SubtractStrutBounds(&box, np);
+
+   /* If tiled is specified, first attempt to use tiled placement. */
+   if(np->state.status & STAT_TILED) {
+      if(TileClient(&box, np)) {
+         return;
+      }
+   }
+
+   /* Either tiled placement failed or was not specified. */
+   if(np->state.status & STAT_CENTERED) {
+      if(excludedScreens) {
+         /* size against the allowed screen before calculating the center */
+         int north, south, east, west;
+         GetBorderSize(&np->state, &north, &south, &east, &west);
+         np->x = box.x + west;
+         np->y = box.y + north;
          ConstrainSize(np);
-         ConstrainPosition(np);
       }
-
+      CenterClient(&box, np);
    } else {
-
-      sp = GetMouseScreen();
-      GetScreenBounds(sp, &box);
-      SubtractTrayBounds(&box, np->state.layer);
-      SubtractStrutBounds(&box, np);
-
-      /* If tiled is specified, first attempt to use tiled placement. */
-      if(np->state.status & STAT_TILED) {
-         if(TileClient(&box, np)) {
-            return;
-         }
-      }
-
-      /* Either tiled placement failed or was not specified. */
-      if(np->state.status & STAT_CENTERED) {
-         CenterClient(&box, np);
-      } else {
-         CascadeClient(&box, np);
-      }
-
+      CascadeClient(&box, np, sp);
    }
 
 }

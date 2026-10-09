@@ -34,6 +34,25 @@ own windows, with a two-row bar on the second:
        <TaskList screen="local" rows="2" maxwidth="256"/>
     </Tray>
 
+Initial placement exclusions (this fork)
+------------------------------------------------------------------------------
+Reserve a monitor for manually moved windows with a top-level setting:
+
+    <Placement exclude="DP-0"/>
+
+The value is a RandR output name, "primary", or a zero-based Xinerama
+screen index. Repeat the element to exclude more screens. New managed
+windows avoid these screens even when an application restores a saved
+position or a Group specifies a position. Placement uses the mouse's
+screen if allowed, otherwise the primary allowed screen, otherwise the
+first allowed screen. Existing windows keep their positions on restart;
+dragging and later application-requested moves remain unrestricted.
+
+Names require XRandR support. Unknown screens produce a warning and are
+ignored. If every screen is excluded, JWM warns and allows the primary
+screen (or screen 0) so new windows still have a destination. Overrides
+such as application-owned popups are outside WM placement control.
+
 Requirements
 ------------------------------------------------------------------------------
 To build JWM you will need a C compiler (gcc works), X11, and the
