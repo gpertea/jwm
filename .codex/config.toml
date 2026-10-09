@@ -1,0 +1,25 @@
+[mcp_servers.codebase-memory-mcp]
+command = "codebase-memory-mcp"
+cwd = "."
+enabled = true
+required = false
+startup_timeout_sec = 30
+tool_timeout_sec = 120
+default_tools_approval_mode = "auto"
+enabled_tools = [
+  "index_repository",
+  "index_status",
+  "list_projects",
+  "search_graph",
+  "search_code",
+  "trace_path",
+  "detect_changes",
+  "query_graph",
+  "get_graph_schema",
+  "get_code_snippet",
+  "get_architecture",
+  "check_index_coverage",
+]
+
+[mcp_servers.codebase-memory-mcp.env]
+CBM_ALLOWED_ROOT = "."

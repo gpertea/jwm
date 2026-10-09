@@ -97,9 +97,22 @@ No unit tests. Verification ladder:
   logical commits, buildable at every commit (CONTRIBUTING.md).
 - No Co-Authored-By/AI attribution trailers in commit messages.
 
-## Code navigation
+## Codebase Knowledge Graph
 
-The repo is indexed in the codebase-memory graph (project
-`data-gpertea-work-jwm`): use search_graph / trace_path /
-get_code_snippet for symbol lookup and call-chain tracing before
-falling back to grep.
+- Use the project-scoped `codebase-memory-mcp` tools for code requests that
+  benefit from structural context: architecture, symbol discovery, callers,
+  callees, dependencies, impact analysis, dead code, refactor scope, and
+  unfamiliar code paths.
+- At first use, call `list_projects`. If the current repository is absent or
+  stale, call `index_repository` with its exact root, then check `index_status`.
+- Prefer `search_graph`, `trace_path`, and `get_code_snippet` for discovery.
+  Use `get_architecture`, `query_graph`, and `detect_changes` when relevant.
+- After finding candidate paths, call `check_index_coverage` before relying on
+  graph conclusions. Verify exact source with normal file tools.
+- Use `rg` directly for literals, errors, configuration, documentation,
+  non-code files, or when graph results are insufficient.
+- Keep activation project-scoped. Never add global MCP config, hooks,
+  instructions, or skills for this server.
+- If the MCP is unavailable in the current session, state that a new Codex
+  session is required and continue with local tools. Never claim graph evidence
+  without calling the graph tools.
